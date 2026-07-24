@@ -1,0 +1,29 @@
+# Dependències
+node_modules/
+
+# Compilació
+dist/
+
+# Fitxers temporals del servidor
+uploads/*
+!uploads/.gitkeep
+
+# Variables i secrets
+.env
+.env.*
+!.env.example
+
+.dev.vars
+.dev.vars.*
+
+# Fitxers locals
+*.local
+*.log
+
+# Sistema operatiu
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
