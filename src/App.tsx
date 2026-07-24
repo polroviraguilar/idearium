@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { LogOut } from "lucide-react";
+import { AuthPage } from "./components/AuthPage";
+import { useAuth } from "./hooks/useAuth";
 import { db, exportBackup, importBackup, newId, seedDatabase } from "./lib/db";
 import { attachmentKindFromFile } from "./lib/media";
 import type { Attachment, Category, Note } from "./lib/types";
@@ -21,7 +24,15 @@ function voiceTitle(transcript?: string): string {
   return `Nota de veu - ${new Intl.DateTimeFormat("ca-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(Date.now())}`;
 }
 
-export default function App() {
+interface IdeariumWorkspaceProps {
+  userEmail: string;
+  onSignOut: () => Promise<void>;
+}
+
+function IdeariumWorkspace({
+  userEmail,
+  onSignOut
+}: IdeariumWorkspaceProps) {
   const categories = useLiveQuery(() => db.categories.orderBy("order").toArray(), [], []) ?? [];
   const allNotes = useLiveQuery(() => db.notes.toArray(), [], []) ?? [];
   const allAttachments = useLiveQuery(() => db.attachments.toArray(), [], []) ?? [];
@@ -283,7 +294,33 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="authenticated-shell">
+      <header className="account-bar">
+        <div className="account-identity">
+          <span>Sessió iniciada</span>
+          <strong>{userEmail}</strong>
+        </div>
+
+        <button
+          type="button"
+          className="account-signout"
+          onClick={() => {
+            void onSignOut().catch((caught) => {
+              const message =
+                caught instanceof Error
+                  ? caught.message
+                  : "No s'ha pogut tancar la sessió.";
+
+              window.alert(message);
+            });
+          }}
+        >
+          <LogOut size={16} />
+          Tancar sessió
+        </button>
+      </header>
+
+      <div className="app-shell">
       <Sidebar
         categories={categories}
         selectedCategory={selectedCategory}
@@ -330,13 +367,38 @@ export default function App() {
         onDeleteNote={deleteNote}
         onRetryTranscription={retryTranscription}
       />
-      {voiceOpen && (
-        <VoiceRecorder
-          onClose={() => setVoiceOpen(false)}
-          onComplete={createVoiceNote}
-          onFailure={createFailedVoiceNote}
-        />
-      )}
+        {voiceOpen && (
+          <VoiceRecorder
+            onClose={() => setVoiceOpen(false)}
+            onComplete={createVoiceNote}
+            onFailure={createFailedVoiceNote}
+          />
+        )}
+      </div>
     </div>
+  );
+}
+
+export default function App() {
+  const { session, loading, signOut } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="auth-loading">
+        <div className="auth-loading-mark">I</div>
+        <strong>Preparant Idearium...</strong>
+      </main>
+    );
+  }
+
+  if (!session) {
+    return <AuthPage />;
+  }
+
+  return (
+    <IdeariumWorkspace
+      userEmail={session.user.email ?? "Usuari d'Idearium"}
+      onSignOut={signOut}
+    />
   );
 }
