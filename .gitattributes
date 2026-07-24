@@ -1,0 +1,21 @@
+# Git desa els fitxers de text amb LF al repositori
+* text=auto eol=lf
+
+# Scripts específics de Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Fitxers binaris
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.mp4 binary
+*.webm binary
+*.ogg binary
