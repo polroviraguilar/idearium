@@ -63,7 +63,9 @@ export function NoteEditor(props: NoteEditorProps) {
   if (!note) {
     return (
       <main className="editor-panel empty-editor">
-        <div className="empty-editor-mark">I</div>
+        <div className="empty-editor-mark">
+          <img src="/icons/icon-192.png" alt="" />
+        </div>
         <h2>Selecciona o crea una nota</h2>
         <p>Les idees no han d'arribar ordenades. Captura-les primer; ja les treballaràs després.</p>
       </main>
