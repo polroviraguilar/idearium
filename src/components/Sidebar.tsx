@@ -43,7 +43,9 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="brand-row">
-        <div className="brand-mark" aria-hidden="true">I</div>
+        <div className="brand-mark">
+          <img src="/icons/icon-192.png" alt="" />
+        </div>
         <div>
           <div className="brand-name">Idearium</div>
           <div className="brand-kicker">Arxiu personal d'idees</div>
