@@ -1718,3 +1718,93 @@ a:focus-visible {
     flex: 0 0 auto;
   }
 }
+
+/* =========================================================
+   FASE 8 — GRAVADOR I TRANSCRIPCIÓ ROBUSTA
+   ========================================================= */
+
+.modal-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.recorder-orb.near-limit {
+  color: #b83b31;
+  background: rgba(184, 59, 49, 0.1);
+  border-color: rgba(184, 59, 49, 0.38);
+}
+
+.recorder-meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: -5px 0 18px;
+  color: var(--muted);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.notice-banner {
+  padding: 10px 12px;
+  margin-top: 13px;
+  color: #347458;
+  background: rgba(52, 116, 88, 0.09);
+  border: 1px solid rgba(52, 116, 88, 0.23);
+  border-radius: 9px;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.voice-options input:disabled,
+.voice-options select:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.transcription-processing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 16px;
+  margin-bottom: 24px;
+  color: var(--text);
+  background: var(--soft-accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 12px;
+}
+
+.transcription-processing div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transcription-processing strong {
+  font-size: 12px;
+}
+
+.transcription-processing span:not(.spinner) {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.transcription-spinner {
+  flex: 0 0 auto;
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  border-top-color: var(--accent);
+}
+
+@media (max-width: 520px) {
+  .recorder-meta {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .transcription-processing {
+    align-items: flex-start;
+  }
+}

@@ -36,6 +36,7 @@ export function NoteEditor(props: NoteEditorProps) {
   const [linkName, setLinkName] = useState("");
   const [showLinkForm, setShowLinkForm] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
+  const [retryingTranscription, setRetryingTranscription] = useState(false);
   const category = useMemo(() => props.categories.find((item) => item.id === note?.categoryId), [props.categories, note?.categoryId]);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export function NoteEditor(props: NoteEditorProps) {
     setBody(note?.body ?? "");
     setTags(note?.tags.join(", ") ?? "");
     setSaveState("saved");
+    setRetryingTranscription(false);
   }, [note?.id]);
 
   useEffect(() => {
@@ -88,6 +90,20 @@ export function NoteEditor(props: NoteEditorProps) {
     });
   }
 
+  async function retryTranscription() {
+    if (retryingTranscription || activeNote.transcriptionStatus === "processing") {
+      return;
+    }
+
+    setRetryingTranscription(true);
+
+    try {
+      await props.onRetryTranscription(activeNote);
+    } finally {
+      setRetryingTranscription(false);
+    }
+  }
+
   return (
     <main className="editor-panel">
       <header className="editor-toolbar">
@@ -129,14 +145,37 @@ export function NoteEditor(props: NoteEditorProps) {
             <div className="source-badge"><Mic2 size={14} /> Nota creada des d'una gravació</div>
           )}
 
+          {activeNote.transcriptionStatus === "processing" && (
+            <div className="transcription-processing" aria-live="polite">
+              <div>
+                <strong>Transcrivint la nota de veu...</strong>
+                <span>No tanquis l'aplicació fins que acabi el procés.</span>
+              </div>
+              <span className="spinner transcription-spinner" />
+            </div>
+          )}
+
           {activeNote.transcriptionStatus === "failed" && (
             <div className="transcription-warning">
               <div>
                 <strong>La nota de veu encara no s'ha transcrit.</strong>
-                <span>L'àudio s'ha conservat localment i pots tornar-ho a provar.</span>
+                <span>L'àudio s'ha conservat i pots tornar-ho a provar.</span>
               </div>
-              <button className="secondary-button" onClick={() => props.onRetryTranscription(activeNote)}>
-                <RotateCw size={17} /> Reintentar
+              <button
+                className="secondary-button"
+                onClick={retryTranscription}
+                disabled={retryingTranscription}
+              >
+                {retryingTranscription ? (
+                  <>
+                    <span className="spinner transcription-spinner" />
+                    Reintentant...
+                  </>
+                ) : (
+                  <>
+                    <RotateCw size={17} /> Reintentar
+                  </>
+                )}
               </button>
             </div>
           )}

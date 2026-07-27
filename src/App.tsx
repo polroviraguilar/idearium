@@ -24,6 +24,8 @@ import { NoteList } from "./components/NoteList";
 import { NoteEditor } from "./components/NoteEditor";
 import { VoiceRecorder } from "./components/VoiceRecorder";
 
+const STALE_TRANSCRIPTION_MS = 5 * 60_000;
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -131,6 +133,7 @@ function IdeariumWorkspace({
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const retryingTranscriptionsRef = useRef<Set<string>>(new Set());
 
   const {
     state: syncState,
@@ -182,6 +185,39 @@ function IdeariumWorkspace({
       cancelled = true;
     };
   }, [database, userId]);
+
+  useEffect(() => {
+    if (!databaseReady) return;
+
+    let cancelled = false;
+
+    async function recoverStaleTranscriptions() {
+      const cutoff = Date.now() - STALE_TRANSCRIPTION_MS;
+      const notes = await database.notes.toArray();
+      const staleNotes = notes.filter(
+        (note) =>
+          !note.deletedAt &&
+          note.transcriptionStatus === "processing" &&
+          note.updatedAt < cutoff
+      );
+
+      for (const note of staleNotes) {
+        if (cancelled) return;
+
+        await updateLocalNote(database, note.id, {
+          transcriptionStatus: "failed"
+        });
+      }
+    }
+
+    void recoverStaleTranscriptions().catch((caught) => {
+      console.error("No s'han pogut recuperar les transcripcions aturades:", caught);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [database, databaseReady]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -440,6 +476,8 @@ function IdeariumWorkspace({
   }
 
   async function retryTranscription(note: Note) {
+    if (retryingTranscriptionsRef.current.has(note.id)) return;
+
     const audio = allAttachments.find(
       (attachment) =>
         attachment.noteId === note.id &&
@@ -451,6 +489,8 @@ function IdeariumWorkspace({
       window.alert("No s'ha trobat l'àudio original d'aquesta nota.");
       return;
     }
+
+    retryingTranscriptionsRef.current.add(note.id);
 
     await updateLocalNote(database, note.id, {
       transcriptionStatus: "processing"
@@ -478,6 +518,8 @@ function IdeariumWorkspace({
       window.alert(
         caught instanceof Error ? caught.message : "Error de transcripció."
       );
+    } finally {
+      retryingTranscriptionsRef.current.delete(note.id);
     }
   }
 
