@@ -118,7 +118,9 @@ export function AuthPage() {
     <main className="auth-page">
       <section className="auth-intro">
         <div className="auth-brand">
-          <div className="auth-brand-mark">I</div>
+          <div className="auth-brand-mark">
+            <img src="/icons/icon-192.png" alt="" />
+          </div>
 
           <div>
             <div className="auth-brand-name">Idearium</div>
