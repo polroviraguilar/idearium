@@ -1,150 +1,407 @@
 # Idearium
 
-Idearium és una aplicació web privada i instal·lable per capturar, ordenar i desenvolupar idees. Està pensada per a un sol usuari, no necessita cap compte i desa les dades localment al navegador. Només utilitza un petit servidor per fer la transcripció de veu amb alta precisió.
+Idearium is a personal Progressive Web App for capturing, organizing, and developing ideas through text, voice notes, tags, categories, attachments, and automatic transcription.
 
-## Funcionalitats principals
+The application combines an offline-first local database with secure cloud synchronization, allowing users to continue working even when the connection is unstable and recover their data across devices.
 
-- Crear, editar, fixar, arxivar, cercar i categoritzar notes.
-- Afegir etiquetes separades per comes.
-- Gravar notes de veu des del navegador.
-- Transcriure les gravacions i crear automàticament una entrada a **Pendent de revisió**.
-- Conservar l'àudio original al costat de la transcripció.
-- Reintentar una transcripció fallida sense perdre la gravació.
-- Adjuntar imatges, àudios, vídeos, documents i qualsevol altre tipus de fitxer.
-- Afegir enllaços, amb previsualització automàtica de YouTube, Spotify i imatges directes.
-- Consultar i editar les dades sense connexió.
-- Instal·lar l'aplicació com a PWA.
-- Exportar i restaurar una còpia JSON completa, inclosos els adjunts.
-- Utilitzar tema clar o fosc.
+Production application: https://idearium.pages.dev
 
-## Arquitectura
+Repository: https://github.com/polroviraguilar/idearium
+
+## Overview
+
+Idearium is designed as a private idea-management workspace. It focuses on fast capture first and organization later.
+
+Users can create text notes, record voice memos, transcribe audio, attach files, organize ideas by category and tags, and synchronize everything between devices.
+
+The application is implemented as a PWA and can be installed on supported desktop and mobile browsers.
+
+## Main Features
+
+### Authentication
+
+- User registration and sign-in with Supabase Auth
+- Isolated data for every authenticated user
+- Secure session handling
+- Sign-out support
+- Row Level Security policies for all remote data
+
+### Notes
+
+- Create, edit, archive, restore, pin, and delete notes
+- Automatic local saving
+- Search by title, content, and tags
+- Sort notes by latest update
+- Dedicated states for active, pending-review, and archived notes
+
+### Categories and Tags
+
+- Default categories for inbox, pending review, ideas, projects, references, and archive
+- User-created categories
+- Category-specific colors and ordering
+- Multiple tags per note
+- Category and tag synchronization across devices
+
+### Voice Notes
+
+- Record audio directly from the browser
+- Preview recordings before saving
+- Select Catalan, Spanish, English, or automatic language detection
+- Add optional transcription context
+- Preserve the original recording even when transcription fails
+- Retry failed transcriptions
+- Automatic recovery for interrupted transcription states
+
+### Automatic Transcription
+
+- Production transcription through Cloudflare Pages Functions and Workers AI
+- Local development transcription through an Express server and OpenAI
+- Authenticated transcription requests
+- Protection against duplicate requests
+- Request timeout and cancellation support
+- Maximum recording duration and upload-size validation
+- Safe error handling without exposing internal service details
+
+### Attachments
+
+- Images
+- Audio files
+- Video files
+- Documents
+- Web links
+
+Binary files are stored in a private Supabase Storage bucket. Metadata is synchronized through the Supabase database, while local copies are cached in IndexedDB for offline access.
+
+### Synchronization
+
+- Local-first storage with Dexie and IndexedDB
+- Cloud synchronization with Supabase
+- Synchronization of notes, categories, tags, attachments, and deletions
+- Pending-change queue while offline
+- Automatic retry when the connection returns
+- Periodic background synchronization while the application is open
+- Conflict-copy creation when local and remote note changes overlap
+
+### Offline Support
+
+- PWA installation
+- Cached application shell
+- Local access to previously downloaded notes and attachments
+- Local editing without an active connection
+- Automatic synchronization after reconnecting
+
+### Backup and Restore
+
+- Export all user data to a JSON backup
+- Include notes, categories, metadata, and attachment contents
+- Restore a backup into the local user database
+- Synchronize restored data without creating duplicate remote records
+
+### Appearance and Responsive Design
+
+- Light and dark themes
+- Desktop, tablet, and mobile layouts
+- Installable PWA interface
+- Accessible keyboard focus states
+- Responsive note editor and attachment views
+
+## Technology Stack
+
+### Frontend
+
+- React 18
+- TypeScript
+- Vite
+- Dexie
+- IndexedDB
+- vite-plugin-pwa
+- Lucide React
+
+### Backend and Cloud Services
+
+- Supabase Auth
+- Supabase PostgreSQL
+- Supabase Row Level Security
+- Supabase Storage
+- Cloudflare Pages
+- Cloudflare Pages Functions
+- Cloudflare Workers AI
+
+### Local Development API
+
+- Node.js
+- Express
+- Multer
+- OpenAI API
+
+## Architecture
 
 ```text
-Navegador / PWA instal·lada
-  React + TypeScript + Vite
-  Dexie / IndexedDB
-    notes
-    categories
-    adjunts binaris
+Browser / Installed PWA
+├── React interface
+├── Dexie / IndexedDB
+├── Service worker
+└── Supabase client
+    ├── Authentication
+    ├── PostgreSQL data
+    └── Private Storage
 
-POST /api/transcribe
-  Servidor Express
-  API de transcripció d'OpenAI
+Production transcription
+└── Cloudflare Pages Function
+    ├── Supabase session validation
+    └── Workers AI transcription
+
+Local transcription
+└── Express development server
+    └── OpenAI transcription API
 ```
 
-La clau de l'API no s'envia mai al navegador. Es conserva exclusivament al fitxer `.env` del servidor.
+## Data Model
 
-## Requisits
+The main entities are:
 
-- Node.js 20 o superior.
-- npm.
-- Un navegador modern amb IndexedDB i MediaRecorder.
-- Una clau de l'API d'OpenAI només si vols utilitzar la transcripció de veu.
+- `categories`
+- `notes`
+- `attachments`
 
-## Instal·lació
+Each synchronized record includes user ownership and synchronization metadata. Local data is stored in a user-specific IndexedDB database:
 
-Obre una terminal dins la carpeta del projecte i executa:
+```text
+idearium-user-<user-id>
+```
+
+Remote access is restricted by Supabase Row Level Security so authenticated users can only access their own records.
+
+## Storage
+
+The private Supabase Storage bucket is:
+
+```text
+idearium-attachments
+```
+
+Files follow this path structure:
+
+```text
+<user-id>/<note-id>/<attachment-id>
+```
+
+Links are stored as metadata only and do not create Storage objects.
+
+## Local Development
+
+### Requirements
+
+- Node.js 22 or later
+- npm
+- A Supabase project
+- An OpenAI API key for local transcription
+
+### Installation
 
 ```bash
+git clone https://github.com/polroviraguilar/idearium.git
+cd idearium
 npm install
 ```
 
-A Windows PowerShell, crea el fitxer de configuració amb:
+### Environment Variables
 
-```powershell
-Copy-Item .env.example .env
-```
-
-A macOS o Linux:
-
-```bash
-cp .env.example .env
-```
-
-Obre el fitxer `.env` i substitueix el valor de mostra:
+Create a `.env.local` file in the project root:
 
 ```env
-OPENAI_API_KEY=sk-la-teva-clau
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+Create a `.env` file for the local Express transcription server:
+
+```env
+OPENAI_API_KEY=your-openai-api-key
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-transcribe
 PORT=8787
 ```
 
-No enganxis la clau a `src`, `vite.config.ts`, IndexedDB ni cap fitxer que puguis publicar a Git.
+Do not commit `.env`, `.env.local`, secret keys, or service-role keys.
 
-## Executar en desenvolupament
-
-Des de l'arrel del projecte:
+### Start Development
 
 ```bash
 npm run dev
 ```
 
-Obre aquesta adreça al navegador:
+This starts:
 
-```text
-http://localhost:5173
-```
+- Vite on `http://localhost:5173`
+- The local Express API on `http://localhost:8787`
 
-Vite redirigeix automàticament les crides `/api/*` cap a `http://localhost:8787`.
+Vite proxies `/api` requests to the Express server during development.
 
-## Compilar i executar en producció
+### Production Build
 
 ```bash
 npm run build
-npm start
 ```
 
-El servidor Express servirà tant la PWA compilada com l'endpoint de transcripció:
+### Preview the Build
+
+```bash
+npm run preview
+```
+
+## Available Scripts
 
 ```text
-http://localhost:8787
+npm run dev      Start the Vite frontend and local Express API
+npm run build    Run TypeScript checks and create the production build
+npm run start    Start the Express server in production mode
+npm run preview  Preview the Vite production build locally
 ```
 
-Per utilitzar el micròfon fora de `localhost`, has de publicar l'aplicació sota HTTPS.
+## Cloudflare Deployment
 
-## Persistència de dades
+The production frontend is deployed with Cloudflare Pages.
 
-Les notes i els adjunts es desen a la base de dades IndexedDB `idearium` del navegador.
+The GitHub repository is connected to Cloudflare, so a push to the main branch triggers a new deployment.
 
-Això implica que:
-
-- No necessites SQL Server, MySQL ni cap altre servidor de base de dades.
-- Les notes continuen disponibles sense connexió.
-- Cada navegador i cada perfil tenen una base de dades diferent.
-- Esborrar les dades del lloc web pot eliminar tota la informació.
-- Els fitxers grans consumeixen la quota d'emmagatzematge del navegador.
-
-Idearium demana al navegador emmagatzematge persistent, però igualment convé utilitzar **Exportar còpia** regularment. La importació substitueix totes les dades locals actuals.
-
-## Flux d'una nota de veu
-
-1. Prem el botó del micròfon.
-2. Autoritza l'accés al micròfon.
-3. Selecciona l'idioma principal o deixa activa la detecció automàtica.
-4. Escriu noms propis, sigles o termes especialitzats al camp de context si cal.
-5. Grava i revisa l'àudio.
-6. Prem **Transcriure i crear nota**.
-7. Idearium crea una entrada a **Pendent de revisió** i hi adjunta la gravació original.
-
-Si el servidor no està disponible o falta la clau de l'API, pots desar l'àudio igualment. La nota quedarà marcada com a pendent i podràs reintentar la transcripció més endavant.
-
-## Limitacions actuals
-
-- La transcripció fora de línia no està inclosa. Afegir Whisper local augmentaria molt la mida i els requisits de maquinari.
-- IndexedDB és adequada per a una aplicació personal en un dispositiu, però no sincronitza automàticament diversos dispositius.
-- La quota disponible varia segons el navegador i el sistema operatiu.
-- Les previsualitzacions incrustades depenen del proveïdor extern i necessiten connexió.
-
-## Estructura del projecte
+Production URL:
 
 ```text
-idearium/
-  public/icons/            Icones de la PWA
-  server/index.ts          API de transcripció i servidor de producció
-  src/components/          Components de la interfície
-  src/lib/db.ts            Esquema IndexedDB i còpies de seguretat
-  src/lib/media.ts         Detecció i previsualització de mitjans
-  src/App.tsx              Estat i fluxos principals
-  src/styles.css           Sistema visual responsive
-  vite.config.ts           Configuració de la PWA i proxy de desenvolupament
+https://idearium.pages.dev
 ```
+
+The Pages project requires:
+
+### Workers AI Binding
+
+```text
+AI
+```
+
+### Environment Variables
+
+```text
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
+```
+
+The production transcription endpoint is:
+
+```text
+POST /api/transcribe
+```
+
+GitHub Pages is not used because the application requires a server-side Pages Function and a Workers AI binding.
+
+## Supabase Security
+
+The project uses:
+
+- Row Level Security on all application tables
+- User-scoped read, insert, update, and delete policies
+- A private Storage bucket
+- Storage paths prefixed by the authenticated user ID
+- Authenticated access to the transcription endpoint
+- No service-role key in the browser
+
+The Supabase publishable key can be used by the frontend because access is restricted by authentication and Row Level Security. Secret and service-role keys must never be exposed in client code.
+
+## PWA Behavior
+
+Idearium uses an automatically updated service worker.
+
+The PWA configuration includes:
+
+- Installable application manifest
+- Application icons
+- Cached application resources
+- Cached image resources
+- API routes excluded from navigation fallback
+- Automatic service-worker updates
+
+## Backup Format
+
+Backups are exported as JSON and include:
+
+- Notes
+- Categories
+- Attachments
+- Synchronization metadata
+- Binary attachments encoded as data URLs
+
+A backup restore replaces the current local user data and then synchronizes it with the remote database.
+
+## Project Status
+
+The core application is complete and deployed.
+
+Implemented areas include:
+
+- Authentication
+- Local database
+- Secure remote database
+- Notes and categories
+- Tags and search
+- Attachment synchronization
+- Voice recording
+- Automatic transcription
+- Offline change queue
+- Backup and restore
+- Legacy IndexedDB migration
+- Production deployment
+
+Final validation focuses on extended offline testing and testing the installed PWA on additional mobile devices.
+
+## Current Limitations
+
+The current version does not include:
+
+- Real-time collaborative editing
+- Public note sharing
+- Rich-text editing
+- Reminders or calendar integration
+- Automatic AI classification
+- Long-audio chunked transcription
+- Shared workspaces
+
+These features may be considered for future versions.
+
+## Repository About Configuration
+
+Recommended GitHub repository details:
+
+```text
+Description:
+Personal PWA for capturing, organizing, and developing ideas with voice transcription, attachments, offline support, and cross-device synchronization.
+
+Website:
+https://idearium.pages.dev
+
+Topics:
+react
+typescript
+vite
+pwa
+supabase
+cloudflare
+indexeddb
+dexie
+offline-first
+voice-notes
+speech-to-text
+workers-ai
+```
+
+Recommended home page options:
+
+```text
+Releases: enabled when versioned releases are published
+Deployments: enabled
+Packages: disabled unless the project starts publishing packages
+```
+
+## License
+
+No license has been defined yet.
+
+Before allowing reuse, redistribution, or contributions, add a license file that reflects the intended terms for the project.
