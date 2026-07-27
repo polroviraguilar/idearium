@@ -81,6 +81,27 @@ export class IdeariumDatabase extends Dexie {
       attachments:
         "id, userId, noteId, kind, syncStatus, deletedAt, createdAt"
     });
+
+    this.version(2)
+      .stores({
+        notes:
+          "id, userId, categoryId, status, pinned, syncStatus, deletedAt, updatedAt, createdAt, *tags",
+        categories:
+          "id, userId, order, name, syncStatus, deletedAt, updatedAt, createdAt",
+        attachments:
+          "id, userId, noteId, kind, syncStatus, deletedAt, createdAt"
+      })
+      .upgrade(async (transaction) => {
+        const now = Date.now();
+
+        await transaction
+          .table("categories")
+          .toCollection()
+          .modify((category: Partial<Category>) => {
+            category.createdAt ??= now;
+            category.updatedAt ??= category.createdAt;
+          });
+      });
   }
 }
 
@@ -236,8 +257,12 @@ async function migrateLegacyDatabase(
       return emptyResult;
     }
 
+    const migrationTime = Date.now();
+
     const categories: Category[] = legacyCategories.map((category) => ({
       ...category,
+      createdAt: migrationTime,
+      updatedAt: migrationTime,
       ...migratedRecordMetadata(userId)
     }));
 
@@ -291,10 +316,14 @@ export async function seedDatabase(
   const existingCategories = await database.categories.toArray();
   const existingIds = new Set(existingCategories.map((category) => category.id));
 
+  const now = Date.now();
+
   const missingCategories: Category[] = DEFAULT_CATEGORY_TEMPLATES
     .filter((category) => !existingIds.has(category.id))
     .map((category) => ({
       ...category,
+      createdAt: now,
+      updatedAt: now,
       ...createSyncMetadata(userId)
     }));
 
@@ -516,12 +545,16 @@ export async function importBackup(
     throw new Error("El fitxer no és una còpia d'Idearium compatible.");
   }
 
+  const importTime = Date.now();
+
   const categories: Category[] = payload.categories.map((category) => ({
     id: category.id,
     name: category.name,
     accent: category.accent,
     order: category.order,
     system: category.system,
+    createdAt: category.createdAt ?? importTime,
+    updatedAt: category.updatedAt ?? category.createdAt ?? importTime,
     ...normalizedMetadata(category, userId)
   }));
 

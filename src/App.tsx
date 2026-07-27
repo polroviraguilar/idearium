@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { LogOut } from "lucide-react";
 import { AuthPage } from "./components/AuthPage";
 import { useAuth } from "./hooks/useAuth";
+import { useDataSync, type DataSyncState } from "./hooks/useDataSync";
 import {
   createSyncMetadata,
   exportBackup,
@@ -39,6 +40,31 @@ function voiceTitle(transcript?: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(Date.now())}`;
+}
+
+function syncStatusText(
+  state: DataSyncState,
+  pendingCount: number
+): string {
+  if (state === "syncing") return "Sincronitzant...";
+
+  if (state === "offline") {
+    return pendingCount > 0
+      ? `Sense connexió · ${pendingCount} canvis pendents`
+      : "Sense connexió";
+  }
+
+  if (state === "error") {
+    return pendingCount > 0
+      ? `Error de sincronització · ${pendingCount} canvis pendents`
+      : "Error de sincronització";
+  }
+
+  if (pendingCount > 0) {
+    return `${pendingCount} canvis pendents`;
+  }
+
+  return state === "synced" ? "Sincronitzat" : "Preparant sincronització";
 }
 
 interface IdeariumWorkspaceProps {
@@ -104,6 +130,18 @@ function IdeariumWorkspace({
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  const {
+    state: syncState,
+    pendingCount,
+    error: syncError
+  } = useDataSync({
+    database,
+    userId,
+    enabled: databaseReady
+  });
+
+  const currentSyncStatus = syncStatusText(syncState, pendingCount);
 
   useEffect(() => {
     let cancelled = false;
@@ -478,11 +516,15 @@ function IdeariumWorkspace({
       "#3b858d"
     ];
 
+    const now = Date.now();
+
     const category: Category = {
       id: newId(),
       name,
       accent: colors[categories.length % colors.length],
       order: Math.max(50, ...categories.map((item) => item.order)) + 10,
+      createdAt: now,
+      updatedAt: now,
       ...createSyncMetadata(userId)
     };
 
@@ -563,6 +605,7 @@ function IdeariumWorkspace({
         <div className="account-identity">
           <span>Sessió iniciada</span>
           <strong>{userEmail}</strong>
+          <span title={syncError || undefined}>{currentSyncStatus}</span>
         </div>
 
         <button

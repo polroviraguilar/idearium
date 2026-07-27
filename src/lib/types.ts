@@ -19,6 +19,8 @@ export interface Category extends SyncMetadata {
   accent: string;
   order: number;
   system?: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Note extends SyncMetadata {
