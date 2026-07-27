@@ -596,7 +596,9 @@ function IdeariumWorkspace({
   if (databaseError) {
     return (
       <main className="auth-loading">
-        <div className="auth-loading-mark">I</div>
+        <div className="auth-loading-mark">
+          <img src="/icons/icon-192.png" alt="" />
+        </div>
         <strong>No s'ha pogut preparar la base local.</strong>
         <span>{databaseError}</span>
         <button
