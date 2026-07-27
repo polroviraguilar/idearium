@@ -42,7 +42,7 @@ export function useDataSync({
       async () => {
         if (!enabled) return 0;
 
-        const [categories, notes] = await Promise.all([
+        const [categories, notes, attachments] = await Promise.all([
           database.categories
             .where("syncStatus")
             .anyOf("pending", "error", "syncing")
@@ -50,10 +50,14 @@ export function useDataSync({
           database.notes
             .where("syncStatus")
             .anyOf("pending", "error", "syncing")
+            .count(),
+          database.attachments
+            .where("syncStatus")
+            .anyOf("pending", "error", "syncing")
             .count()
         ]);
 
-        return categories + notes;
+        return categories + notes + attachments;
       },
       [database, enabled],
       0
