@@ -18,6 +18,7 @@ import {
 } from "./lib/db";
 import { attachmentKindFromFile } from "./lib/media";
 import type { Attachment, Category, Note } from "./lib/types";
+import { transcribeAudio } from "./lib/transcription";
 import { Sidebar } from "./components/Sidebar";
 import { NoteList } from "./components/NoteList";
 import { NoteEditor } from "./components/NoteEditor";
@@ -455,41 +456,18 @@ function IdeariumWorkspace({
       transcriptionStatus: "processing"
     });
 
-    const body = new FormData();
-    const extension = audio.mimeType?.includes("mp4")
-      ? "m4a"
-      : audio.mimeType?.includes("ogg")
-        ? "ogg"
-        : "webm";
-
-    body.append("audio", audio.blob, `nota-veu.${extension}`);
-
-    if (note.transcriptionLanguage) {
-      body.append("language", note.transcriptionLanguage);
-    }
-
     try {
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        body
+      const transcription = await transcribeAudio({
+        blob: audio.blob,
+        mimeType: audio.mimeType || audio.blob.type || "audio/webm",
+        language: note.transcriptionLanguage
       });
-
-      const payload = (await response.json()) as {
-        text?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !payload.text) {
-        throw new Error(
-          payload.error || "No s'ha pogut transcriure l'àudio."
-        );
-      }
 
       await updateLocalNote(database, note.id, {
         title: note.title.startsWith("Nota de veu -")
-          ? voiceTitle(payload.text)
+          ? voiceTitle(transcription.text)
           : note.title,
-        body: payload.text.trim(),
+        body: transcription.text,
         transcriptionStatus: "complete"
       });
     } catch (caught) {

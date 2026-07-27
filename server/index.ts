@@ -112,8 +112,6 @@ app.post("/api/transcribe", upload.single("audio"), async (request: Request, res
       text: transcription.text,
       model
     });
-
-    response.json({ text: transcription.text, model });
   } catch (caught) {
   const errorDetails =
     caught && typeof caught === "object"

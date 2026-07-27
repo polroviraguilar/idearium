@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CircleStop, Mic2, RotateCcw, Sparkles, X } from "lucide-react";
+import { transcribeAudio } from "../lib/transcription";
 
 type RecorderStage = "idle" | "recording" | "ready" | "transcribing" | "error";
 
@@ -97,19 +98,20 @@ export function VoiceRecorder({ onClose, onComplete, onFailure }: VoiceRecorderP
     if (!audioBlob) return;
     setStage("transcribing");
     setError("");
-    const extension = mimeTypeRef.current.includes("mp4") ? "m4a" : mimeTypeRef.current.includes("ogg") ? "ogg" : "webm";
-    const body = new FormData();
-    body.append("audio", audioBlob, `nota-veu.${extension}`);
-    if (language) body.append("language", language);
-    if (context.trim()) body.append("prompt", context.trim());
-
     try {
-      const response = await fetch("/api/transcribe", { method: "POST", body });
-      const payload = await response.json() as { text?: string; error?: string };
-      if (!response.ok || !payload.text) {
-        throw new Error(payload.error || "No s'ha pogut transcriure l'àudio.");
-      }
-      await onComplete(audioBlob, payload.text, mimeTypeRef.current, language);
+      const transcription = await transcribeAudio({
+        blob: audioBlob,
+        mimeType: mimeTypeRef.current,
+        language,
+        prompt: context
+      });
+
+      await onComplete(
+        audioBlob,
+        transcription.text,
+        mimeTypeRef.current,
+        language
+      );
       onClose();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Error desconegut de transcripció.";
